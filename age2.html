@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ahad Age Calculator • Matrix Neon</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#050708;
+      --panel:rgba(7, 14, 10, .72);
+      --panel2:rgba(10, 20, 14, .55);
+      --line:rgba(0, 255, 140, .22);
+      --neon:#00ff8c;
+      --neon2:#00d4ff;
+      --text:#eafff5;
+      --muted:rgba(234,255,245,.68);
+      --danger:#ff3b3b;
+      --shadow: 0 18px 70px rgba(0,0,0,.55);
+      --radius: 18px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 70% 10%, rgba(0,255,140,.08), transparent 55%),
+                  radial-gradient(900px 600px at 15% 70%, rgba(0,212,255,.06), transparent 60%),
+                  linear-gradient(180deg, #020404, #070b08 55%, #020404);
+      overflow-x:hidden;
+    }
+
+    /* Matrix rain canvas */
+    canvas#matrix{
+      position:fixed;
+      inset:0;
+      z-index:-2;
+      opacity:.55;
+      filter: blur(.2px) contrast(1.05);
+    }
+
+    /* Scanlines + vignette */
+    .fx{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:-1;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255,255,255,.03) 0px,
+          rgba(255,255,255,.03) 1px,
+          rgba(0,0,0,0) 3px,
+          rgba(0,0,0,0) 6px
+        );
+      mix-blend-mode:overlay;
+      opacity:.22;
+    }
+    .vignette{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:-1;
+      background: radial-gradient(circle at center, transparent 45%, rgba(0,0,0,.65) 100%);
+      opacity:.9;
+    }
+
+    /* ===== Neon text utilities ===== */
+    .neon-text{
+      color: var(--neon);
+      text-shadow:
+        0 0 4px rgba(0,255,140,.55),
+        0 0 10px rgba(0,255,140,.60),
+        0 0 20px rgba(0,255,140,.45),
+        0 0 44px rgba(0,255,140,.30);
+      animation: neonPulse 3s ease-in-out infinite;
+    }
+    .neon-blue{
+      color: var(--neon2);
+      text-shadow:
+        0 0 4px rgba(0,212,255,.55),
+        0 0 12px rgba(0,212,255,.55),
+        0 0 28px rgba(0,212,255,.40);
+    }
+    .flicker{
+      animation: flicker 5s infinite;
+    }
+    @keyframes neonPulse{
+      0%,100%{
+        text-shadow:
+          0 0 4px rgba(0,255,140,.50),
+          0 0 12px rgba(0,255,140,.55),
+          0 0 28px rgba(0,255,140,.35);
+      }
+      50%{
+        text-shadow:
+          0 0 7px rgba(0,255,140,.85),
+          0 0 18px rgba(0,255,140,.95),
+          0 0 55px rgba(0,255,140,.70);
+      }
+    }
+    @keyframes flicker{
+      0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+      20%, 24%, 55% { opacity: .65; }
+    }
+
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:28px 18px 40px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:18px 18px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:linear-gradient(180deg, rgba(0,255,140,.08), rgba(0,0,0,.05));
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      animation: headerGlow 6s ease-in-out infinite;
+      will-change: box-shadow;
+    }
+    @keyframes headerGlow{
+      0%,100%{ box-shadow: 0 0 25px rgba(0,255,140,.22), var(--shadow); }
+      50%{ box-shadow: 0 0 60px rgba(0,255,140,.40), var(--shadow); }
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      line-height:1.15;
+    }
+    .brand .title{
+      font-weight:800;
+      letter-spacing:.7px;
+      font-size:18px;
+    }
+    .brand .subtitle{
+      font-family:"Fira Code", monospace;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .badge{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border:1px solid rgba(0,255,140,.30);
+      border-radius:14px;
+      background:rgba(0,255,140,.06);
+      font-family:"Fira Code", monospace;
+      font-size:12px;
+      color:rgba(234,255,245,.85);
+      white-space:nowrap;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--neon);
+      box-shadow:0 0 18px rgba(0,255,140,.75);
+      animation:pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(1); opacity:.75}
+      50%{transform:scale(1.28); opacity:1}
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      margin-top:18px;
+    }
+
+    .card{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:linear-gradient(180deg, var(--panel), var(--panel2));
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(400px 200px at 10% 0%, rgba(0,255,140,.16), transparent 55%),
+                  radial-gradient(300px 200px at 90% 20%, rgba(0,212,255,.12), transparent 60%);
+      pointer-events:none;
+      opacity:.6;
+    }
+
+    .card-inner{
+      position:relative;
+      padding:18px;
+    }
+
+    .card h2{
+      margin:0 0 10px;
+      font-size:16px;
+      letter-spacing:.4px;
+    }
+    .hint{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .form{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      align-items:end;
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      color:rgba(234,255,245,.78);
+      margin-bottom:6px;
+      font-family:"Fira Code", monospace;
+    }
+
+    input[type="date"], input[type="number"]{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(0,255,140,.28);
+      background:rgba(0,0,0,.35);
+      color:var(--text);
+      outline:none;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
+      font-family:"Fira Code", monospace;
+      transition: box-shadow .35s ease, border-color .35s ease, transform .35s ease;
+      will-change: box-shadow, transform;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator{
+      filter: invert(1) hue-rotate(120deg) saturate(2);
+      opacity:.85;
+      cursor:pointer;
+    }
+    input:focus{
+      border-color: rgba(0,255,140,.75);
+      box-shadow:
+        0 0 8px rgba(0,255,140,.55),
+        0 0 22px rgba(0,255,140,.35),
+        inset 0 0 0 1px rgba(0,0,0,.18);
+      transform: translateY(-1px);
+    }
+
+    .btnrow{
+      display:flex;
+      gap:10px;
+      grid-column: 1 / -1;
+      margin-top:4px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      border:0;
+      padding:12px 14px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      letter-spacing:.3px;
+      color:#02120a;
+      background:linear-gradient(180deg, rgba(0,255,140,1), rgba(0,180,120,1));
+      box-shadow: 0 10px 35px rgba(0,255,140,.20);
+      text-shadow: 0 0 6px rgba(0,255,140,.6);
+      transition: transform .18s ease, filter .18s ease, box-shadow .25s ease;
+      will-change: transform, box-shadow;
+    }
+    button:hover{
+      transform: translateY(-1px);
+      filter:brightness(1.05);
+      box-shadow:
+        0 0 15px rgba(0,255,140,.45),
+        0 0 40px rgba(0,255,140,.35),
+        0 10px 35px rgba(0,255,140,.22);
+    }
+    button:active{transform: translateY(0px); filter:brightness(.98)}
+    .ghost{
+      background:transparent;
+      color:rgba(234,255,245,.9);
+      border:1px solid rgba(0,255,140,.35);
+      box-shadow:none;
+      text-shadow:
+        0 0 6px rgba(0,255,140,.45),
+        0 0 18px rgba(0,255,140,.25);
+    }
+    .ghost:hover{
+      box-shadow:
+        0 0 10px rgba(0,255,140,.28),
+        0 0 28px rgba(0,255,140,.18);
+    }
+
+    .status{
+      margin-top:12px;
+      font-family:"Fira Code", monospace;
+      font-size:12px;
+      color:rgba(234,255,245,.75);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .status .chip{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(0,255,140,.28);
+      background:rgba(0,255,140,.06);
+      box-shadow: 0 0 18px rgba(0,255,140,.08);
+    }
+
+    .results{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+
+    .metric{
+      border-radius:16px;
+      border:1px solid rgba(0,255,140,.18);
+      background:rgba(0,0,0,.26);
+      padding:12px 12px;
+      position:relative;
+      overflow:hidden;
+      transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+      will-change: transform, box-shadow;
+    }
+    .metric::after{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(220px 120px at 20% 0%, rgba(0,255,140,.14), transparent 60%);
+      opacity:.75;
+      pointer-events:none;
+    }
+    .metric:hover{
+      transform: translateY(-4px) scale(1.02);
+      border-color: rgba(0,255,140,.75);
+      box-shadow:
+        0 0 12px rgba(0,255,140,.35),
+        0 0 38px rgba(0,255,140,.25);
+    }
+
+    .k{
+      position:relative;
+      font-family:"Fira Code", monospace;
+      font-size:12px;
+      color:rgba(234,255,245,.78);
+      margin-bottom:6px;
+      text-shadow:
+        0 0 8px rgba(0,255,140,.10);
+    }
+
+    .v{
+      position:relative;
+      font-family:"Fira Code", monospace;
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+
+      /* breathing neon glow */
+      animation: breatheGlow 4s ease-in-out infinite;
+      text-shadow:
+        0 0 6px rgba(0,255,140,.35),
+        0 0 18px rgba(0,255,140,.25);
+    }
+    @keyframes breatheGlow{
+      0%,100%{
+        text-shadow:
+          0 0 5px rgba(0,255,140,.35),
+          0 0 14px rgba(0,255,140,.25);
+      }
+      50%{
+        text-shadow:
+          0 0 10px rgba(0,255,140,.80),
+          0 0 30px rgba(0,255,140,.75),
+          0 0 60px rgba(0,255,140,.35);
+      }
+    }
+
+    .sub{
+      position:relative;
+      margin-top:6px;
+      font-size:11px;
+      color:rgba(234,255,245,.62);
+      line-height:1.4;
+    }
+
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+
+    .assumptions{
+      font-family:"Fira Code", monospace;
+      font-size:12px;
+      color:rgba(234,255,245,.78);
+      line-height:1.65;
+    }
+    .assumptions code{
+      color:var(--neon);
+      background:rgba(0,255,140,.06);
+      padding:2px 6px;
+      border:1px solid rgba(0,255,140,.18);
+      border-radius:999px;
+      font-size:12px;
+      box-shadow: 0 0 12px rgba(0,255,140,.10);
+    }
+
+    .warning{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,59,59,.35);
+      background:rgba(255,59,59,.08);
+      color:rgba(255,220,220,.95);
+      font-size:12px;
+      display:none;
+    }
+
+    footer{
+      margin-top:18px;
+      color:rgba(234,255,245,.55);
+      font-size:12px;
+      text-align:center;
+      font-family:"Fira Code", monospace;
+      text-shadow: 0 0 12px rgba(0,255,140,.12);
+    }
+
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr}
+      .badge{display:none}
+    }
+    @media (max-width: 520px){
+      .form{grid-template-columns:1fr}
+      .results{grid-template-columns:1fr}
+      .v{font-size:17px}
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="fx"></div>
+  <div class="vignette"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="title neon-text flicker">AHAD AGE CALCULATOR</div>
+        <div class="subtitle neon-blue">[ Matrix Mode • DOB → life-stats compiler ]</div>
+      </div>
+      <div class="badge"><span class="dot"></span><span id="clock">SYNCING…</span></div>
+    </header>
+
+    <div class="grid">
+      <!-- Main -->
+      <section class="card">
+        <div class="card-inner">
+          <h2 class="neon-text" style="animation:none">Enter Date of Birth</h2>
+          <p class="hint">
+            Type your DOB and get live results: <b class="neon-text" style="animation:none">Current Age</b>,
+            <b class="neon-text" style="animation:none">Days</b>, <b class="neon-text" style="animation:none">Hours</b>,
+            <b class="neon-text" style="animation:none">Seconds</b>, plus estimates for
+            <b class="neon-text" style="animation:none">Total Sleep</b>, <b class="neon-text" style="animation:none">Heartbeats</b>,
+            <b class="neon-text" style="animation:none">Breaths</b>, and <b class="neon-text" style="animation:none">Earth Rotations</b>.
+          </p>
+
+          <div class="form">
+            <div>
+              <label for="dob">DATE OF BIRTH</label>
+              <input id="dob" type="date" />
+            </div>
+
+            <div>
+              <label for="sleepHours">SLEEP HOURS / DAY</label>
+              <input id="sleepHours" type="number" min="0" max="24" step="0.5" value="8" />
+            </div>
+
+            <div>
+              <label for="bpm">HEART RATE (BPM)</label>
+              <input id="bpm" type="number" min="20" max="220" step="1" value="72" />
+            </div>
+
+            <div>
+              <label for="breaths">BREATHS / MIN</label>
+              <input id="breaths" type="number" min="5" max="60" step="1" value="16" />
+            </div>
+
+            <div class="btnrow">
+              <button id="calc">CALCULATE</button>
+              <button id="live" class="ghost" title="Auto-update every second">LIVE MODE: OFF</button>
+              <button id="reset" class="ghost">RESET</button>
+            </div>
+          </div>
+
+          <div class="warning" id="warn"></div>
+
+          <div class="status">
+            <span class="chip">STATUS</span>
+            <span id="statusText">Awaiting input…</span>
+          </div>
+
+          <div class="results" id="results"></div>
+        </div>
+      </section>
+
+      <!-- Side -->
+      <aside class="side">
+        <section class="card">
+          <div class="card-inner">
+            <h2 class="neon-text" style="animation:none">Assumptions</h2>
+            <div class="assumptions">
+              <div>• Sleep = <code>sleepHours/day</code> (default 8)</div>
+              <div>• Heartbeats = <code>BPM</code> (default 72)</div>
+              <div>• Breaths = <code>breaths/min</code> (default 16)</div>
+              <div>• Earth Rotations ≈ <code>days lived</code></div>
+              <div style="margin-top:10px;color:rgba(234,255,245,.62)">
+                Notes: Uses your device time (local timezone). Age is computed precisely (years, months, days) from DOB to “now”.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-inner">
+            <h2 class="neon-text" style="animation:none">Output Integrity</h2>
+            <p class="hint" style="margin-bottom:0">
+              For accuracy, keep DOB correct. Live mode updates every second for seconds/heartbeats/breaths.
+            </p>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <footer>
+      © <span id="year"></span> • AHAD Matrix Utility • built for clean, professional hacker vibes
+    </footer>
+  </div>
+
+  <script>
+    // ---------- Helpers ----------
+    const $ = (id) => document.getElementById(id);
+    function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
+    function formatNumber(n, digits=0){
+      if (!isFinite(n)) return "—";
+      return n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+    }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+
+    // Precise Y/M/D diff between two dates (a -> b), where b >= a
+    function diffYMD(a, b){
+      let years = b.getFullYear() - a.getFullYear();
+      let months = b.getMonth() - a.getMonth();
+      let days = b.getDate() - a.getDate();
+
+      if (days < 0){
+        const prevMonth = new Date(b.getFullYear(), b.getMonth(), 0);
+        days += prevMonth.getDate();
+        months -= 1;
+      }
+      if (months < 0){
+        months += 12;
+        years -= 1;
+      }
+      return { years, months, days };
+    }
+
+    // ---------- UI + State ----------
+    const resultsEl = $("results");
+    const warnEl = $("warn");
+    const statusText = $("statusText");
+    const liveBtn = $("live");
+    const calcBtn = $("calc");
+    const resetBtn = $("reset");
+    let liveTimer = null;
+
+    function setWarning(msg){
+      if (!msg){
+        warnEl.style.display = "none";
+        warnEl.textContent = "";
+        return;
+      }
+      warnEl.style.display = "block";
+      warnEl.textContent = msg;
+    }
+    function setStatus(msg){ statusText.textContent = msg; }
+
+    function renderMetrics(data){
+      const items = [
+        { k: "CURRENT AGE", v: data.ageText, s: "Precise years / months / days" },
+        { k: "DAYS LIVED", v: formatNumber(data.daysLived, 0), s: "Earth Rotations ≈ days lived" },
+        { k: "HOURS LIVED", v: formatNumber(data.hoursLived, 0), s: "Total hours since DOB" },
+        { k: "SECONDS LIVED", v: formatNumber(data.secondsLived, 0), s: "Live mode updates this" },
+        { k: "TOTAL SLEEP", v: formatNumber(data.sleepHoursTotal, 0) + " hrs", s: `Using ${data.sleepPerDay} hrs/day` },
+        { k: "HEARTBEATS", v: formatNumber(data.heartbeats, 0), s: `Using ${data.bpm} BPM` },
+        { k: "BREATHS", v: formatNumber(data.breathsTotal, 0), s: `Using ${data.breathsPerMin} breaths/min` },
+        { k: "EARTH ROTATIONS", v: formatNumber(data.earthRotations, 0), s: "One rotation per day (approx.)" },
+      ];
+
+      resultsEl.innerHTML = items.map(m => `
+        <div class="metric">
+          <div class="k">${m.k}</div>
+          <div class="v">${m.v}</div>
+          <div class="sub">${m.s}</div>
+        </div>
+      `).join("");
+    }
+
+    function compute(){
+      setWarning("");
+
+      const dobVal = $("dob").value;
+      if (!dobVal){
+        setStatus("Awaiting DOB input…");
+        resultsEl.innerHTML = "";
+        return;
+      }
+
+      const dob = new Date(dobVal + "T00:00:00");
+      const now = new Date();
+
+      if (isNaN(dob.getTime())){
+        setWarning("Invalid date of birth. Please select a valid date.");
+        setStatus("Input error.");
+        resultsEl.innerHTML = "";
+        return;
+      }
+
+      if (dob > now){
+        setWarning("DOB cannot be in the future.");
+        setStatus("Input error.");
+        resultsEl.innerHTML = "";
+        return;
+      }
+
+      // Read assumptions
+      let sleepPerDay = parseFloat($("sleepHours").value);
+      let bpm = parseFloat($("bpm").value);
+      let breathsPerMin = parseFloat($("breaths").value);
+
+      if (!isFinite(sleepPerDay)) sleepPerDay = 8;
+      if (!isFinite(bpm)) bpm = 72;
+      if (!isFinite(breathsPerMin)) breathsPerMin = 16;
+
+      sleepPerDay = clamp(sleepPerDay, 0, 24);
+      bpm = clamp(bpm, 20, 220);
+      breathsPerMin = clamp(breathsPerMin, 5, 60);
+
+      // Time differences
+      const ms = now.getTime() - dob.getTime();
+      const seconds = ms / 1000;
+      const minutes = seconds / 60;
+      const hours = minutes / 60;
+      const days = hours / 24;
+
+      // Precise age (Y/M/D)
+      const ymd = diffYMD(dob, now);
+      const ageText = `${ymd.years}y ${ymd.months}m ${ymd.days}d`;
+
+      // Estimates
+      const sleepHoursTotal = days * sleepPerDay;
+      const heartbeats = minutes * bpm;
+      const breathsTotal = minutes * breathsPerMin;
+      const earthRotations = days;
+
+      renderMetrics({
+         ageText,
+        daysLived: Math.floor(days),
+        hoursLived: Math.floor(hours),
+        secondsLived: Math.floor(seconds),
+        sleepHoursTotal: Math.floor(sleepHoursTotal),
+        heartbeats: Math.floor(heartbeats),
+        breathsTotal: Math.floor(breathsTotal),
+        earthRotations: Math.floor(earthRotations),
+        sleepPerDay,
+        bpm,
+        breathsPerMin
+      });
+
+      setStatus("Calculated successfully ✔");
+    }
+
+    function setLive(on){
+      if (on){
+        liveBtn.textContent = "LIVE MODE: ON";
+        liveBtn.style.borderColor = "rgba(0,255,140,.65)";
+        if (!liveTimer) liveTimer = setInterval(compute, 1000);
+        setStatus("Live mode running…");
+      } else {
+        liveBtn.textContent = "LIVE MODE: OFF";
+        liveBtn.style.borderColor = "rgba(0,255,140,.35)";
+        if (liveTimer){ clearInterval(liveTimer); liveTimer = null; }
+        setStatus("Live mode stopped.");
+      }
+    }
+
+    // ---------- Events ----------
+    calcBtn.addEventListener("click", compute);
+    liveBtn.addEventListener("click", () => { setLive(!liveTimer); compute(); });
+
+    resetBtn.addEventListener("click", () => {
+      $("dob").value = "";
+      $("sleepHours").value = 8;
+      $("bpm").value = 72;
+      $("breaths").value = 16;
+      setLive(false);
+      setWarning("");
+      setStatus("Reset complete.");
+      resultsEl.innerHTML = "";
+    });
+
+    ["sleepHours","bpm","breaths","dob"].forEach(id=>{
+      $(id).addEventListener("input", ()=>{ if (liveTimer) compute(); });
+      $(id).addEventListener("change", ()=>{ if (liveTimer) compute(); });
+    });
+
+    // ---------- Clock Badge ----------
+    function updateClock(){
+      const d = new Date();
+      const t = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+      $("clock").textContent = `SYNC ${t}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+    $("year").textContent = new Date().getFullYear();
+
+    // ---------- Matrix Rain ----------
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+    let w, h, cols, drops, fontSize;
+
+    function resize(){
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      fontSize = Math.max(14, Math.floor(Math.min(w, h) / 55));
+      cols = Math.floor(w / fontSize);
+      drops = new Array(cols).fill(1);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const glyphs = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ0123456789#$%&*+=<>";
+
+    function draw(){
+      ctx.fillStyle = "rgba(0, 0, 0, 0.07)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.font = `${fontSize}px "Fira Code", monospace`;
+
+      for (let i=0; i<drops.length; i++){
+        const text = glyphs[Math.floor(Math.random() * glyphs.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        ctx.fillStyle = "rgba(0, 255, 140, 0.85)";
+        ctx.fillText(text, x, y);
+
+        if (y > h && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    setStatus("Awaiting DOB input…");
+  </script>
+</body>
+</html>
